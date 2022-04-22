@@ -172,7 +172,7 @@ class MinaSubscriptions:
 
     def start( self, update: Update, context: CallbackContext):
         update.message.reply_text(
-            "Welcome!\nType /help for available commands.")
+            "Welcome to Mina Block Producer Alerts!\nType /help for available commands.")
 
     def help( self, update: Update, context: CallbackContext):
         message = [ "Available Commands:\n",
