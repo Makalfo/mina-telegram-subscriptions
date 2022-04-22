@@ -20,7 +20,7 @@ from telegram.ext.filters import Filters
 
 class MinaSubscriptions:
 
-    def __init__( self, mode='nominal', file_name='telegram_subscriptions.log' ):
+    def __init__( self, mode='nominal', file_name='output.log' ):
 
         # file names
         self.files = {  'config': 'config.ini' }
@@ -53,9 +53,6 @@ class MinaSubscriptions:
         # connect to database
         self.subscription = self.connect_db( self.config[ 'Subscriptions' ] )
         self.cursor = self.subscription.cursor()
-
-        # connect to analysis database
-        self.analysis = self.connect_db( self.config[ 'Parser' ] )
 
         # create database
         if mode == "setup":
@@ -186,32 +183,34 @@ class MinaSubscriptions:
 
     def subscribe( self, update: Update, context: CallbackContext):
         # get the public key
-        public_key = str( context.args[0] )
         user = update.message.from_user
         self.logger.info( f"Subscribe Request received from: {user} with { context.args }")
-        if "B62" in public_key:
-            # check if already registered
-            if len( self.check_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key) ) == 0:
-                
-                if len( self.get_num_subscriptions( user[ 'id' ], user[ 'username' ], user[ 'first_name' ] ) ) <= int( self.config[ 'Config' ][ 'max_subs' ] ):
-                    # add the block producer to the subscriptions
-                    self.logger.info( f"Subscribing {user} for { public_key }")                
-                    self.insert_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key )
-                    update.message.reply_text( f"Successfully Subscribed to { public_key }" )
+        if len( context.args ) == 1:
+            public_key = str( context.args[0] )
+            if len( public_key ) == 55 and public_key.isalnum() and "B62" in public_key:
+                # check if already registered
+                if len( self.check_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key) ) == 0:
+                    if len( self.get_num_subscriptions( user[ 'id' ], user[ 'username' ], user[ 'first_name' ] ) ) <= int( self.config[ 'Config' ][ 'max_subs' ] ):
+                        # add the block producer to the subscriptions
+                        self.logger.info( f"Subscribing {user} for { public_key }")                
+                        self.insert_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key )
+                        update.message.reply_text( f"Successfully Subscribed to { public_key }" )
+                    else:
+                        # max subscriptions reached
+                        update.message.reply_text( f"Max Number of Subscriptions Reached." )
                 else:
-                    # max subscriptions reached
-                    update.message.reply_text( f"Max Number of Subscriptions Reached." )
+                    # already subscribed
+                    self.logger.warning( f"{user} Already Subscribed to { public_key }" )
+                    update.message.reply_text( f"Already Subscribed to { public_key }" )
             else:
-                # already subscribed
-                self.logger.warning( f"{user} Already Subscribed to { public_key }")
-                update.message.reply_text( f"Already Subscribed to { public_key }" )
+                self.logger.warning( "To Subscribe, Provide a Block Producer Key." )
+                update.message.reply_text( f"To Subscribe, Provide a Valid Block Producer Key.\nInvalid: {public_key}\nTo Subscribe, type '/subscribe <Block Producer Key>'" )
         else:
-            self.logger.warning( f"Unable to Subscribe {user} for { public_key } - Invalid Block Producer Key")
-            update.message.reply_text( f"Unable to Subscribe - Invalid Block Producer Key: {public_key}" )
+            self.logger.warning( f"Unable to Subscribe {user} - No Block Producer Key Provided")
+            update.message.reply_text( f"Unable to Subscribe - No Block Producer Key Provided.\nTo Subscribe, type '/subscribe <Block Producer Key>'" )
 
     def unsubscribe( self, update: Update, context: CallbackContext):
         # get the public key
-        public_key = str( context.args[0] )
         user = update.message.from_user
         self.logger.info( f"Unsubscribe Request received from: {user} with { context.args }")
 
@@ -219,26 +218,34 @@ class MinaSubscriptions:
         current_subs = self.get_num_subscriptions( user[ 'id' ], user[ 'username' ], user[ 'first_name' ] )
 
         # check if delete all subs
-        if public_key.lower() == "all" and len( current_subs ) != 0:
-            self.logger.info( f"Unsubscribing {user} from All Block Producers")  
-            self.delete_subscriptions( ','.join( str( v ) for v in current_subs ) )
-            update.message.reply_text( f"Successfully Unsubscribed to All Block Producers" )
-
-        elif "B62" in public_key:
-            # check if subscribed
-            key_subs = self.check_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key )
-            if len( key_subs ) != 0:
-                # add the block producer to the subscriptions
-                self.logger.info( f"Unsubscribing {user} from { public_key }")  
-                self.delete_subscriptions( ','.join( str( v ) for v in key_subs ) )
-                update.message.reply_text( f"Successfully Unsubscribed to { public_key }" )
+        if len( context.args ) == 1:
+            public_key = str( context.args[0] )
+            if public_key.isalnum():
+                if public_key == "all" and len( current_subs ) != 0:
+                    self.logger.info( f"Unsubscribing {user} from All Block Producers")  
+                    self.delete_subscriptions( ','.join( str( v ) for v in current_subs ) )
+                    update.message.reply_text( f"Successfully Unsubscribed to All Block Producers" )
+                elif len( public_key ) == 55 and public_key.isalnum() and "B62" in public_key:
+                    # check if subscribed
+                    key_subs = self.check_subscription( user[ 'id' ], user[ 'username' ], user[ 'first_name' ], public_key )
+                    if len( key_subs ) != 0:
+                        # add the block producer to the subscriptions
+                        self.logger.info( f"Unsubscribing {user} from { public_key }")  
+                        self.delete_subscriptions( ','.join( str( v ) for v in key_subs ) )
+                        update.message.reply_text( f"Successfully Unsubscribed to { public_key }" )
+                    else:
+                        # not subscribed
+                        self.logger.warning( f"{user} Not Subscribed to { public_key }")
+                        update.message.reply_text( f"Not Subscribed to { public_key }" )
+                else:
+                    self.logger.warning( f"Not Unsubscribed to { public_key } for {user} - Invalid Block Producer Key")
+                    update.message.reply_text( f"Unable to Unsubscribe - Invalid Block Producer Key: {public_key}" )
             else:
-                # not subscribed
-                self.logger.warning( f"{user} Not Subscribed to { public_key }")
-                update.message.reply_text( f"Not Subscribed to { public_key }" )
+                self.logger.warning( f"Invalid Block Producer Key {public_key}. To unsubscribe from all - '/unsubscribe all'" )
+                update.message.reply_text( f"Invalid Block Producer Key {public_key}.\nTo unsubscribe from all - '/unsubscribe all'" )
         else:
-            self.logger.warning( f"Not Subscribed to { public_key } for {user} - Invalid Block Producer Key")
-            update.message.reply_text( f"Unable to Subscribe - Invalid Block Producer Key: {public_key}" )
+            self.logger.warning( "To Unsubscribe from All, type '/unsubscribe all'" )
+            update.message.reply_text( "To Unsubscribe from All, type '/unsubscribe all'" )
 
     def unknown( self, update: Update, context: CallbackContext):
         update.message.reply_text(
