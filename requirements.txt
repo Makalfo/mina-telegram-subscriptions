@@ -1,0 +1,9 @@
+setuptools
+Cython
+base58
+wheel
+psycopg2
+tweepy
+configparser
+pandas
+python-telegram-bot
