@@ -1,5 +1,6 @@
 # import libraries
 import os
+import sys
 import pandas as pd
 import pandas.io.sql as sqlio
 import json
@@ -18,6 +19,11 @@ from telegram.ext.commandhandler import CommandHandler
 from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.filters import Filters
 
+logging.getLogger(__name__).addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig( filename = 'output.log',
+            format = '%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+            level = logging.INFO )
+
 class MinaSubscriptions:
 
     def __init__( self, mode='nominal', file_name='output.log' ):
@@ -27,21 +33,10 @@ class MinaSubscriptions:
 
         # log levels and mode
         self.mode = mode
-        if self.mode == 'debug':
-            log_level = logging.DEBUG
-        else:
-            log_level = logging.INFO
-
-        # set logger basic config
-        logging.basicConfig( filename = file_name,
-                    format = '%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
-                    level = log_level )
 
         # save the logger
         self.logger = logging
-        self.logger.info( 'Starting Up Mina Telegram Bot' )
-
-
+        self.logger.info( 'Starting Up Mina Telegram Subscription Bot' )
 
         # log the mode
         self.mode = mode
@@ -51,7 +46,13 @@ class MinaSubscriptions:
         self.config = self.read_config( )
 
         # connect to database
-        self.subscription = self.connect_db( self.config[ 'Subscriptions' ] )
+        self.subscription = self.connect_db( {
+            'database':  os.getenv('SUBSCRIPTION_DATABASE'),
+            'host': os.getenv('SUBSCRIPTION_HOST'),
+            'port': os.getenv('SUBSCRIPTION_PORT'),
+            'user': os.getenv('SUBSCRIPTION_USER'),
+            'password': self.read_file( os.getenv('SUBSCRIPTION_PASSWORD_FILE' ) ),
+        } )
         self.cursor = self.subscription.cursor()
 
         # create database
@@ -60,9 +61,8 @@ class MinaSubscriptions:
             self.create_subscription_table() 
 
         # connect to telegram
-        self.telegram = Updater( self.config['Telegram']['token'],
+        self.telegram = Updater( self.read_file( os.getenv('TELEGRAM_TOKEN_FILE') ),
                     use_context=True)
-
 
         self.telegram.dispatcher.add_handler(CommandHandler('start', self.start))
         self.telegram.dispatcher.add_handler(CommandHandler('subscribe', self.subscribe))
@@ -77,6 +77,11 @@ class MinaSubscriptions:
 
         self.logger.info( f'Start Polling...' )
         self.telegram.start_polling()
+
+    def read_file( self, filename ):
+        '''read the file'''
+        with open(filename, 'r') as f:
+            return f.read().replace("\n","")
 
     def read_config( self ):
         '''read the config file'''
