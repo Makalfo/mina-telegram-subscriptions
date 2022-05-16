@@ -20,8 +20,7 @@ from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.filters import Filters
 
 logging.getLogger(__name__).addHandler(logging.StreamHandler(sys.stdout))
-logging.basicConfig( filename = 'output.log',
-            format = '%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+logging.basicConfig( format = '%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
             level = logging.INFO )
 
 class MinaSubscriptions:
