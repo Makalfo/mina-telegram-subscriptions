@@ -26,7 +26,7 @@ logging.basicConfig( filename = 'output.log',
 
 class MinaSubscriptions:
 
-    def __init__( self, mode='nominal', file_name='output.log' ):
+    def __init__( self, mode='nominal'):
 
         # file names
         self.files = {  'config': 'config.ini' }
@@ -51,7 +51,7 @@ class MinaSubscriptions:
             'host': os.getenv('SUBSCRIPTION_HOST'),
             'port': os.getenv('SUBSCRIPTION_PORT'),
             'user': os.getenv('SUBSCRIPTION_USER'),
-            'password': self.read_file( os.getenv('SUBSCRIPTION_PASSWORD_FILE' ) ),
+            'password': os.getenv('SUBSCRIPTION_PASSWORD' ),
         } )
         self.cursor = self.subscription.cursor()
 
@@ -61,7 +61,7 @@ class MinaSubscriptions:
             self.create_subscription_table() 
 
         # connect to telegram
-        self.telegram = Updater( self.read_file( os.getenv('TELEGRAM_TOKEN_FILE') ),
+        self.telegram = Updater( os.getenv('TELEGRAM_TOKEN' ),
                     use_context=True)
 
         self.telegram.dispatcher.add_handler(CommandHandler('start', self.start))
