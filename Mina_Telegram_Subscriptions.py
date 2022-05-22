@@ -82,7 +82,7 @@ class MinaSubscriptions:
         self.telegram.dispatcher.add_handler(MessageHandler(Filters.text, self.unknown_text))
 
         self.logger.info( f'Start Polling...' )
-        self.telegram.start_polling()
+        self.telegram.start_polling(timeout=600)
 
     def read_file( self, filename ):
         '''read the file'''
