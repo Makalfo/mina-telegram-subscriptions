@@ -18,6 +18,8 @@ from telegram.ext.callbackcontext import CallbackContext
 from telegram.ext.commandhandler import CommandHandler
 from telegram.ext.messagehandler import MessageHandler
 from telegram.ext.filters import Filters
+from telegram.error import (TelegramError, Unauthorized, BadRequest, 
+                            TimedOut, ChatMigrated, NetworkError)
 
 logging.getLogger(__name__).addHandler(logging.StreamHandler(sys.stdout))
 
@@ -77,6 +79,7 @@ class MinaSubscriptions:
         self.telegram.dispatcher.add_handler(MessageHandler(Filters.text, self.unknown))
         self.telegram.dispatcher.add_handler(MessageHandler(
             Filters.command, self.unknown)) # Filters out unknown commands
+        self.telegram.dispatcher.add_error_handler(self.error_callback)
 
         # Filters out unknown messages.
         self.telegram.dispatcher.add_handler(MessageHandler(Filters.text, self.unknown_text))
@@ -355,6 +358,10 @@ class MinaSubscriptions:
     def unknown_text( self, update: Update, context: CallbackContext):
         update.message.reply_text(
             "Sorry I can't recognize you, you said '%s'" % update.message.text)
+
+    def error_callback(self, update: Update, context: CallbackContext):
+        raise context.error
+    
 
 subscriptions = MinaSubscriptions( )
 
